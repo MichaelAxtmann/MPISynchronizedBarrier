@@ -4,23 +4,34 @@ This is the implementation of a C++ MPI barrier which guarantees that the proces
 
 ## Example (see main.cpp)
 ```C++
+// Create clock.
+auto clock = SynchronizedClock{};
+
 // Sync timers.
-auto clock = SynchronizedClock(comm);
+bool is_clock_synced = clock.Init(comm);
+
+// Check whether clock is synced.
+if (is_clock_synced) {
+    std::cout << "PE " << myrank << ": " << " clock is synced." << std::endl;
+} else {
+    std::cout << "PE " << myrank << ": " << " clock is not synced." << std::endl;
+}
 
 // The actual barrier.
-auto barrier = clock.Waitall(comm);
+auto barrier = clock.Barrier(comm);
 
 // Do your stuff.
 
-// Check if the barrier worked.
+// Check if barrier worked.
 if (barrier.Success(comm)) {
-   // ... 
+    std::cout << "PE " << myrank << ": " << " barrier did sync." << std::endl;
 } else {
-  // ...
+    std::cout << "PE " << myrank << ": " << " barrier did not sync." << std::endl;
 }
 ```
 
 You can compile an example by executing the following commands in your shell:
 ```
-mpic++ -c synchronized_barrier.cpp -std=c++11 && mpic++ main.cpp synchronized_barrier.o -std=c++11 && mpirun -np 4 a.out
+make all
+mpirun -np 4 ./build/example
 ```
