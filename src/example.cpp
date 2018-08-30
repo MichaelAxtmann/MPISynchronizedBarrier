@@ -10,6 +10,7 @@
 
 #include <mpi.h>
 #include <iomanip>
+#include <iostream>
 
 int main(int argc, char** argv)
 {
