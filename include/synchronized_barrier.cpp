@@ -8,6 +8,8 @@
 
 #include "synchronized_barrier.hpp"
 
+#include <mpi.h>
+
 SynchronizedBarrier::SynchronizedBarrier() : local_success_(false) {}
 
 SynchronizedBarrier::SynchronizedBarrier(bool local_success) : local_success_(local_success) {}
@@ -85,7 +87,7 @@ bool SynchronizedClock::Init(MPI_Comm comm) {
     
     MPI_Bcast( &synced_pes, 1, MPI_INT, 0, comm );
 
-    std::cout << "PE " << myrank << ": " << " clock diff... " << time_diff_ << std::endl;
+    // std::cout << "PE " << myrank << ": " << " clock diff... " << time_diff_ << std::endl;
     synced_ = synced_pes == nprocs;
     return synced_;
 }
