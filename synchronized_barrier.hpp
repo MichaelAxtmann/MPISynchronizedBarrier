@@ -12,28 +12,32 @@
 
 class SynchronizedBarrier {
 public:
-    SynchronizedBarrier() = delete;
+    SynchronizedBarrier();
+
+    bool Success(MPI_Comm comm);
+
+protected:
+    friend class SynchronizedClock;
 
     SynchronizedBarrier(bool local_success);
 
-    unsigned long Success(MPI_Comm comm);
-
-protected:
     unsigned long local_success_;
+
 };
 
 class SynchronizedClock {
 public:
-    SynchronizedClock() = delete;
-    
-    SynchronizedClock(MPI_Comm comm,
-                      int sync_tag = 01101,
+    SynchronizedClock(int sync_tag = 01101,
                       double max_async_time = 0.000005,
-                      double time_to_sync = 0.01);
+                      double time_to_sync = 0.1);
 
-    SynchronizedBarrier Waitall(MPI_Comm comm);
+    bool Init(MPI_Comm comm);
+    
+    SynchronizedBarrier Barrier(MPI_Comm comm);
 
 protected:
+    int sync_tag_;
+    double max_async_time_;
     double time_to_sync_;
     double time_diff_;
 };

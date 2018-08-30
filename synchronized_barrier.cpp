@@ -8,9 +8,11 @@
 
 #include "synchronized_barrier.hpp"
 
-SynchronizedBarrier:: SynchronizedBarrier(bool local_success) : local_success_(local_success) {}
+SynchronizedBarrier::SynchronizedBarrier() : local_success_(false) {}
 
-unsigned long SynchronizedBarrier::Success(MPI_Comm comm) {
+SynchronizedBarrier::SynchronizedBarrier(bool local_success) : local_success_(local_success) {}
+
+bool SynchronizedBarrier::Success(MPI_Comm comm) {
 
     unsigned long global_success = 0;
     MPI_Allreduce(&local_success_, &global_success, 1, MPI_UNSIGNED_LONG, MPI_LAND, comm);
@@ -18,35 +20,45 @@ unsigned long SynchronizedBarrier::Success(MPI_Comm comm) {
     
 }
 
-SynchronizedClock:: SynchronizedClock(MPI_Comm comm,
-                                      int sync_tag,
-                                      double max_async_time,
-                                      double time_to_sync)
-    : time_to_sync_(time_to_sync) {
+SynchronizedClock::SynchronizedClock(int sync_tag,
+                                     double max_async_time,
+                                     double time_to_sync)
+    : sync_tag_(sync_tag)
+    , max_async_time_(max_async_time)
+    , time_to_sync_(time_to_sync)
+{}
+
+bool SynchronizedClock::Init(MPI_Comm comm) {
 
     int nprocs, myrank;
     MPI_Comm_size(comm, &nprocs);
     MPI_Comm_rank(comm, &myrank);
 
+    int synced_pes = 0;
+    
     if (!myrank) {
-        
+
         for (int target = 0; target != nprocs; ++target) {
             // Sync PE 'target'.
             double start_time = 0;
             double end_time = 0;
-            
-            do {
-                
+
+            for (int it = 0; it != 10; ++it) {
                 start_time = MPI_Wtime();
-                MPI_Send(&start_time, 1, MPI_DOUBLE, target, sync_tag, comm);
+                MPI_Send(&start_time, 1, MPI_DOUBLE, target, sync_tag_, comm);
                 double dummy = 0;
-                MPI_Recv(&dummy, 1, MPI_DOUBLE, target, sync_tag, comm, MPI_STATUS_IGNORE);
+                MPI_Recv(&dummy, 1, MPI_DOUBLE, target, sync_tag_, comm, MPI_STATUS_IGNORE);
                 end_time = MPI_Wtime();
+
+                if (end_time - start_time < max_async_time_) {
+                    synced_pes += 1;
+                    break;
+                }
                 
-            } while (end_time - start_time > max_async_time);
+            }
             
             double succ = -1;
-            MPI_Send(&succ, 1, MPI_DOUBLE, target, sync_tag, comm);
+            MPI_Send(&succ, 1, MPI_DOUBLE, target, sync_tag_, comm);
             
         }
         
@@ -56,13 +68,13 @@ SynchronizedClock:: SynchronizedClock(MPI_Comm comm,
         
         double time_diff = 0;
         double time = 0;
-        MPI_Recv(&time, 1, MPI_DOUBLE, 0, sync_tag, comm, MPI_STATUS_IGNORE);
+        MPI_Recv(&time, 1, MPI_DOUBLE, 0, sync_tag_, comm, MPI_STATUS_IGNORE);
         time_diff = time - MPI_Wtime();
         
         while (time != (double)-1) {
             
-            MPI_Send(&time, 1, MPI_DOUBLE, 0, sync_tag, comm);
-            MPI_Recv(&time, 1, MPI_DOUBLE, 0, sync_tag, comm, MPI_STATUS_IGNORE);
+            MPI_Send(&time, 1, MPI_DOUBLE, 0, sync_tag_, comm);
+            MPI_Recv(&time, 1, MPI_DOUBLE, 0, sync_tag_, comm, MPI_STATUS_IGNORE);
             
             if (time != (double)-1) time_diff = time - MPI_Wtime();
         }
@@ -70,10 +82,13 @@ SynchronizedClock:: SynchronizedClock(MPI_Comm comm,
         
     }
     
+    MPI_Bcast( &synced_pes, 1, MPI_INT, 0, comm );
+
     std::cout << "PE " << myrank << ": " << " clock diff... " << time_diff_ << std::endl;
+    return synced_pes == nprocs;
 }
 
-SynchronizedBarrier SynchronizedClock::Waitall(MPI_Comm comm) {
+SynchronizedBarrier SynchronizedClock::Barrier(MPI_Comm comm) {
     
     MPI_Barrier(comm);
     

@@ -24,7 +24,7 @@ int main(int argc, char** argv)
 
     std::cout << "PE " << myrank << ": " << " Wtime at startup... " << MPI_Wtime() << std::endl;
 
-    SynchronizedClock{comm};
+    SynchronizedClock{};
 
     // Insert delay.
     // Note: this delay does not shift the clock.
@@ -33,14 +33,20 @@ int main(int argc, char** argv)
         while (MPI_Wtime() - time < 2.) {}
     }
     
-    auto clock = SynchronizedClock(comm);
+    auto clock = SynchronizedClock{};
+    bool is_clock_synced = clock.Init(comm);
+    if (is_clock_synced) {
+        std::cout << "PE " << myrank << ": " << " clock is synced." << std::endl;
+    } else {
+        std::cout << "PE " << myrank << ": " << " clock is not synced." << std::endl;
+    }
 
-    auto barrier = clock.Waitall(comm);
+    auto barrier = clock.Barrier(comm);
 
     if (barrier.Success(comm)) {
-        std::cout << "PE " << myrank << ": " << " was synced." << std::endl;
+        std::cout << "PE " << myrank << ": " << " barrier did sync." << std::endl;
     } else {
-        std::cout << "PE " << myrank << ": " << " was not synced." << std::endl;
+        std::cout << "PE " << myrank << ": " << " barrier did not sync." << std::endl;
     }
 
     MPI_Finalize();
