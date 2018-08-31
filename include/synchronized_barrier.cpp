@@ -41,7 +41,7 @@ bool SynchronizedClock::Init(MPI_Comm comm) {
     
     if (!myrank) {
 
-        for (int target = 0; target != nprocs; ++target) {
+        for (int target = 1; target != nprocs; ++target) {
             // Sync PE 'target'.
             double start_time = 0;
             double end_time = 0;
@@ -88,7 +88,7 @@ bool SynchronizedClock::Init(MPI_Comm comm) {
     MPI_Bcast( &synced_pes, 1, MPI_INT, 0, comm );
 
     // std::cout << "PE " << myrank << ": " << " clock diff... " << time_diff_ << std::endl;
-    synced_ = synced_pes == nprocs;
+    synced_ = synced_pes == nprocs - 1;
     return synced_;
 }
 
