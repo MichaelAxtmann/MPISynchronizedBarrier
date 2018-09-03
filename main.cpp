@@ -15,7 +15,7 @@ int main(int argc, char** argv)
 {
     MPI_Init(&argc, &argv);
 
-    MPI_Comm comm = MPI::COMM_WORLD;
+    MPI_Comm comm = MPI_COMM_WORLD;
     int nprocs, myrank;
     MPI_Comm_size(comm, &nprocs);
     MPI_Comm_rank(comm, &myrank);
